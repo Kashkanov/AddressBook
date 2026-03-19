@@ -21,7 +21,7 @@ def get_adresses(db: Session, skip: int = 0, pageSize: int = 10) -> List[Address
     logger.info(f"Returned %{len(res)} addresses")
     return res
 
-def get_address(db: Session, id: int) -> Address:
+def get_address(db: Session, id: int) -> Optional[Address]:
     """returns a specific address based on ID
 
     Args:
@@ -34,8 +34,9 @@ def get_address(db: Session, id: int) -> Address:
     address = db.query(Address).filter(Address.id == id).first()
     if address is None:
         logger.warning("Address does not exist")
-    else:
-        logger.info(f"Found Address ID %{address.id}")
+        return None
+    
+    logger.info(f"Found Address ID %{address.id}")
         
     return address
 
@@ -69,14 +70,14 @@ def update_address(db: Session, id: int, data: AddressUpdate) -> Optional[Addres
     """
     address = get_address(db, id)
     if address is None:
-        logger.warning("Delete failed")
+        logger.warning("Update failed")
         return None
 
     updated = data.model_dump(exclude_unset=True)
     for field, value in updated.items():
         setattr(address, field, value)
     db.commit()
-    db.refresh(Address)
+    db.refresh(address)
     logger.info(f"Updated Addres ID %{id} fields=%{list(updated.keys())}")
     return address
 

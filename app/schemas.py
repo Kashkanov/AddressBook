@@ -4,7 +4,7 @@ from pydantic import BaseModel, Field, field_validator
 
 class AddressCreate(BaseModel):
     
-    label: str = Field(None, min_length=1, max_length=100, examples=["Home"])
+    label: Optional[str] = Field(None, max_length=100, examples=["Home"])
     houseNo: str = Field(...,  min_length=1, max_length=255)
     street: str = Field(...,  min_length=1, max_length=255)
     barangay: str = Field(..., min_length=1, max_length=100)
@@ -20,7 +20,7 @@ class AddressCreate(BaseModel):
         return v.strip()
     
 class AddressUpdate(BaseModel):
-    label: Optional[str] = Field(None, min_length=1)
+    label: Optional[str] = Field(None)
     houseNo: Optional[str] = Field(None, min_length=1)
     street: Optional[str] = Field(None, min_length=1)
     barangay: Optional[str] = Field(None, min_length=1)
@@ -32,7 +32,7 @@ class AddressUpdate(BaseModel):
     
 class AddressResponse(BaseModel):
     id: int
-    label: str
+    label: Optional[str]
     houseNo: str
     street: str
     barangay: str

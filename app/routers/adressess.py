@@ -25,7 +25,7 @@ def get_adresses(skip: int = 0, pageSize: int = 10, db: Session = Depends(get_db
     return crud.get_adresses(db, skip, pageSize)
 
 @router.get("/{id}", response_model=AddressResponse)
-def get_address(id: int, db: Session = Depends(get_db)) -> Address:
+def get_address(id: int, db: Session = Depends(get_db)) -> Optional[Address]:
     """routes to CRUD get address
 
     Args:
@@ -35,7 +35,12 @@ def get_address(id: int, db: Session = Depends(get_db)) -> Address:
     Returns:
         Address: Address object found
     """
-    return crud.get_address(db, id)
+    address = crud.get_address(db, id)
+    if address is None:
+        raise HTTPException(
+            status_code=status.HTTP_404_NOT_FOUND
+        )
+    return address
 
 @router.post("/", response_model=AddressResponse, status_code=status.HTTP_201_CREATED)
 def create_address(payload: AddressCreate, db: Session = Depends(get_db)) -> Address:
