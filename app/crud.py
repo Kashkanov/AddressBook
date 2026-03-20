@@ -1,8 +1,9 @@
 import logging
 from typing import List, Optional
 from sqlalchemy.orm import Session
-from app.schemas import AddressCreate, AddressUpdate
+from app.schemas import AddressCreate, AddressUpdate, NearbyQuery
 from app.models import Address
+from geopy.distance import geodesic
 
 logger = logging.getLogger(__name__)
 
@@ -85,8 +86,8 @@ def delete_address(db: Session, id: int) -> bool:
     """delete an address based on id number
 
     Args:
-        db (Session): _description_
-        id (int): _description_
+        db (Session): db session instance
+        id (int): ID number of Address we want to delete
     
     Returns:
         bool: boolean that determines whether delete is successful
@@ -101,3 +102,26 @@ def delete_address(db: Session, id: int) -> bool:
     db.commit()
     logger.info(f"Delete Address ID %{id} successful")
     return True
+
+def get_nearby_addresses( db: Session, data: NearbyQuery) -> List[Address]:
+    """ Return all addresses within given distance using Geopy library
+
+    Args:
+        db (Session): db session instance
+        latitude (float): latitude of reference address
+        longitude (float): latitude of reference address
+        distance (float): search radius
+
+    Returns:
+        List[Addresses]: addresses found within distance
+    """
+    center = (data.latitude, data.longitude)
+    all_addresses = db.query(Address).all()
+    nearby = [
+        a for a in all_addresses
+        if geodesic(center, (a.latitude, a.longitude)).km <= data.distance
+    ]
+    
+    logger.info(f"Found {len(nearby)} address/es within %{data.distance} km radius")
+    
+    return nearby

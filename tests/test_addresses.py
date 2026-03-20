@@ -1,9 +1,52 @@
 from fastapi.testclient import TestClient
+import pytest
+from sqlalchemy import create_engine
+from sqlalchemy.orm import sessionmaker
+from app.database import Base, get_db
 from main import app
 
-client = TestClient(app)
+TEST_DATABASE_URL = "sqlite:///./test.db"
 
-def test_create_address_complete():
+engine = create_engine(
+    TEST_DATABASE_URL,
+    connect_args={"check_same_thread": False}
+)
+TestingSessionLocal = sessionmaker(
+    autocommit=False, autoflush=False, bind=engine
+)
+
+@pytest.fixture(scope="session", autouse=True)
+def setup_db():
+    Base.metadata.create_all(bind=engine)
+    yield
+    Base.metadata.drop_all(bind=engine)
+
+@pytest.fixture(autouse=True)
+def reset_db():
+    yield
+    with engine.connect() as conn:
+        for table in reversed(Base.metadata.sorted_tables):
+            conn.execute(table.delete())
+        conn.commit()
+
+@pytest.fixture(autouse=True)
+def override_db():
+    def get_test_db():
+        db = TestingSessionLocal()
+        try:
+            yield db
+        finally:
+            db.close()
+
+    app.dependency_overrides[get_db] = get_test_db
+    yield
+    app.dependency_overrides.clear()
+
+@pytest.fixture
+def client():
+    return TestClient(app)
+
+def test_create_address_complete(client):
     samp_address = {
         "label": "Test",
         "houseNo": "301",
@@ -20,11 +63,11 @@ def test_create_address_complete():
     assert res.status_code == 201
     assert res.json()["label"] == "Test"
     
-def test_create_address_empty():
+def test_create_address_empty(client):
     res = client.post("/address/", json={})
     assert res.status_code == 422
 
-def test_create_address_invalid_lat_and_long():
+def test_create_address_invalid_lat_and_long(client):
     samp_address = {
         "label": "Home",
         "houseNo": "12",
@@ -40,7 +83,7 @@ def test_create_address_invalid_lat_and_long():
     res = client.post("/address/", json=samp_address)
     assert res.status_code == 422
     
-def test_get_addresses_pagination():
+def test_get_addresses_pagination(client):
     addresses = [
         {
             "label": "Home",
@@ -110,7 +153,6 @@ def test_get_addresses_pagination():
         }
     ]
     
-    # create 6 addresses
     for address in addresses:
         client.post("/address/", json=address)
     
@@ -119,16 +161,14 @@ def test_get_addresses_pagination():
     
     assert isinstance(data, list)
 
-    # collect all labels
     labels = [item["label"] for item in data]
 
     print(data)
     
-    # assert the expected labels are present
     expected_labels = {"Friend_House", "Home"}
     assert expected_labels.issubset(labels) 
     
-def test_get_address_exists():
+def test_get_address_exists(client):
     address = {
         "label": "Vacation Home",
         "houseNo": "14",
@@ -144,25 +184,25 @@ def test_get_address_exists():
     add = client.post("/address/", json=address)
     added_addr = add.json()
     
-    res = client.get(f"/address/{added_addr["id"]}")
+    res = client.get(f"/address/{added_addr['id']}")
     data= res.json()
     data.pop("id", None)
     
     assert address == data
     
-def test_get_address_DNE():
+def test_get_address_DNE(client):
     randID = 599
 
     res = client.get(f"/address/{randID}")
     
     if res.status_code != 404:
         data = res.json()
-        client.delete(f"/address/{data["id"]}")
+        client.delete(f"/address/{data['id']}")
         res = client.get(f"/address/{randID}")
     
     assert res.status_code == 404
 
-def test_update_address():
+def test_update_address(client):
     address = {
         "label": "Vacation House",
         "houseNo": "12",
@@ -184,12 +224,12 @@ def test_update_address():
         "longitude": 122.0032
     }
     
-    res = client.put(f"/address/{added_addr["id"]}", json=updates)
+    res = client.put(f"/address/{added_addr['id']}", json=updates)
     data = res.json()
     
     assert all(data[k] == v for k, v in updates.items())
     
-def test_update_address_invalid_fields():
+def test_update_address_invalid_fields(client):
     address = {
         "label": "Work",
         "houseNo": "8B",
@@ -210,10 +250,10 @@ def test_update_address_invalid_fields():
         "longitude": -200
     }
     
-    res = client.put(f"/address/{added_addr["id"]}", json=updates)
+    res = client.put(f"/address/{added_addr['id']}", json=updates)
     assert res.status_code == 422
     
-def test_delete_address():
+def test_delete_address(client):
     address = {
         "label": "Home",
         "houseNo": "25",
@@ -229,6 +269,49 @@ def test_delete_address():
     add = client.post("/address/", json=address)
     added_addr = add.json()
     
-    res = client.delete(f"/address/{added_addr["id"]}")
+    res = client.delete(f"/address/{added_addr['id']}")
     assert res.status_code == 204
+    
+def test_get_nearby_addresses(client):
+    ref = {
+        "latitude": 14.5995,
+        "longitude": 120.9842,
+        "distance": 5
+    }
+    
+    nearby_address = {
+        "label": "Nearby Place",
+        "houseNo": "10",
+        "street": "Taft Avenue",
+        "barangay": "Malate",
+        "city": "Manila",
+        "region": "NCR",
+        "country": "Philippines",
+        "latitude": 14.5700,
+        "longitude": 120.9910
+    }
+    nearby = client.post("/address/", json=nearby_address)
+    
+    OOR_address = {
+        "label": "Far Place",
+        "houseNo": "200",
+        "street": "Aguinaldo Highway",
+        "barangay": "Aniban",
+        "city": "Bacoor",
+        "region": "Calabarzon",
+        "country": "Philippines",
+        "latitude": 14.4120,
+        "longitude": 120.9730
+    }
+    OOR = client.post("/address/", json=OOR_address)
+    
+    res = client.post("address/nearby/", json=ref)
+    data = res.json()
+    
+    print(f"data is {data}")
+    
+    assert nearby.json() in data
+    assert OOR.json() not in data
+    
+    
     

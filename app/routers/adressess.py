@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends, HTTPException, status
 from sqlalchemy.orm import Session
 from app import crud
 from app.database import get_db
-from app.schemas import AddressCreate, AddressResponse, AddressUpdate
+from app.schemas import AddressCreate, AddressResponse, AddressUpdate, NearbyQuery
 from app.models import Address
 
 logger = logging.getLogger(__name__)
@@ -88,3 +88,17 @@ def get_address(id: int, db: Session = Depends(get_db)) -> None:
             status_code=status.HTTP_404_NOT_FOUND
         )
     return None
+
+@router.post("/nearby", response_model=List[AddressResponse])
+def get_nearby_addresses(query: NearbyQuery, db: Session = Depends(get_db )) -> List[Address]:
+    """routes to CRUD get_nearby_addresses
+
+    Args:
+        query (NearbyQuery): schema of earby request form
+        db (Session): db session instance
+
+    Returns:
+        List[Address]: addresses found within distance
+    """
+    return crud.get_nearby_addresses(db, query)
+    

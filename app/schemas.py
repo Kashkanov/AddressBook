@@ -43,3 +43,8 @@ class AddressResponse(BaseModel):
     longitude: float
     model_config = {"from_attributes": True}
     
+class NearbyQuery(BaseModel):
+    latitude: float = Field(..., ge=-90.0, le=90.0)
+    longitude: float = Field(..., ge=-180.0, le=180.0)
+    distance: float = Field(..., gt=0)
+    
