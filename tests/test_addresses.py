@@ -47,6 +47,9 @@ def client():
     return TestClient(app)
 
 def test_create_address_complete(client):
+    """
+        test address creation by inputting a complete and valid address data
+    """
     samp_address = {
         "label": "Test",
         "houseNo": "301",
@@ -64,10 +67,16 @@ def test_create_address_complete(client):
     assert res.json()["label"] == "Test"
     
 def test_create_address_empty(client):
+    """
+        test address creation failure by inputting an empty address
+    """
     res = client.post("/address/", json={})
     assert res.status_code == 422
 
 def test_create_address_invalid_lat_and_long(client):
+    """
+        test address creation validation by inputting address data with invalid coordinates(latitude, longitude)
+    """
     samp_address = {
         "label": "Home",
         "houseNo": "12",
@@ -84,6 +93,9 @@ def test_create_address_invalid_lat_and_long(client):
     assert res.status_code == 422
     
 def test_get_addresses_pagination(client):
+    """
+        test fetching of all pages with pagination
+    """
     addresses = [
         {
             "label": "Home",
@@ -162,13 +174,15 @@ def test_get_addresses_pagination(client):
     assert isinstance(data, list)
 
     labels = [item["label"] for item in data]
-
-    print(data)
     
     expected_labels = {"Friend_House", "Home"}
+    # expect the third and fourth addresses to be returned
     assert expected_labels.issubset(labels) 
     
 def test_get_address_exists(client):
+    """
+        test address fetching if address exists
+    """
     address = {
         "label": "Vacation Home",
         "houseNo": "14",
@@ -191,6 +205,9 @@ def test_get_address_exists(client):
     assert address == data
     
 def test_get_address_DNE(client):
+    """
+        test address fetching if address does not exist
+    """
     randID = 599
 
     res = client.get(f"/address/{randID}")
@@ -203,6 +220,9 @@ def test_get_address_DNE(client):
     assert res.status_code == 404
 
 def test_update_address(client):
+    """
+        test address updating with valid fields
+    """
     address = {
         "label": "Vacation House",
         "houseNo": "12",
@@ -230,6 +250,9 @@ def test_update_address(client):
     assert all(data[k] == v for k, v in updates.items())
     
 def test_update_address_invalid_fields(client):
+    """
+        test address updating validation with invalid coordinates
+    """
     address = {
         "label": "Work",
         "houseNo": "8B",
@@ -254,6 +277,9 @@ def test_update_address_invalid_fields(client):
     assert res.status_code == 422
     
 def test_delete_address(client):
+    """
+        test address deletion
+    """
     address = {
         "label": "Home",
         "houseNo": "25",
@@ -273,6 +299,9 @@ def test_delete_address(client):
     assert res.status_code == 204
     
 def test_get_nearby_addresses(client):
+    """
+        test the fetching of neaby addresses within a certain distance
+    """
     ref = {
         "latitude": 14.5995,
         "longitude": 120.9842,
@@ -308,8 +337,7 @@ def test_get_nearby_addresses(client):
     res = client.post("address/nearby/", json=ref)
     data = res.json()
     
-    print(f"data is {data}")
-    
+    # only the first address should be returned
     assert nearby.json() in data
     assert OOR.json() not in data
     
