@@ -18,7 +18,7 @@
 
 ## 🧐 About <a name = "about"></a>
 
-This is a backend application implemented in FastAPI to provide CRUD functions to Addresses. The address data contains the following fields:
+This is a backend application implemented in FastAPI to provide CRUD functions to addresses data. The addresses contain the following attributes:
 
 <ul>
     <li><strong>label</strong> - this is an optional custom tag for each address</li>
@@ -34,8 +34,6 @@ This is a backend application implemented in FastAPI to provide CRUD functions t
 The database is currently stored in an aqlite file.
 
 ## 🏁 Getting Started <a name = "getting_started"></a>
-
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes. See [deployment](#deployment) for notes on how to deploy the project on a live system.
 
 ### Prerequisites
 
